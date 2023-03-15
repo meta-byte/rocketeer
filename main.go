@@ -107,7 +107,7 @@ type Launch struct {
 	} `json:"results"`
 }
 
-func launchHandler() {
+func launchHandler() Launch {
 	fmt.Println("Calling API...")
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://lldev.thespacedevs.com/2.2.0/launch/upcoming/", nil)
@@ -128,6 +128,7 @@ func launchHandler() {
 	var responseObject Launch
 	json.Unmarshal(bodyBytes, &responseObject)
 	fmt.Printf("API Response as struct %+v\n", responseObject.Results[0])
+	return responseObject
 }
 
 var (
@@ -152,7 +153,20 @@ var (
 			})
 		},
 		"launch": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			launchHandler()
+			responseObject := launchHandler()
+			footerString := fmt.Sprintf("Requested by %v", i.Member)
+			embed := discordgo.MessageEmbed{
+				Title:       responseObject.Results[0].Name,
+				Description: responseObject.Results[0].Mission.Description,
+				Image: &discordgo.MessageEmbedImage{
+					URL: responseObject.Results[0].Image,
+				},
+				Footer: &discordgo.MessageEmbedFooter{
+					Text: footerString,
+				},
+				Color: 15883269,
+			}
+			session.ChannelMessageSendEmbed(i.ChannelID, &embed)
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -195,7 +209,7 @@ func main() {
 
 	err := session.Open()
 	if err != nil {
-		log.Fatalf("unable to open session...", err)
+		log.Fatal("unable to open session...", err)
 	}
 
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
