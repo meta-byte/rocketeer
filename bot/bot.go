@@ -1,9 +1,7 @@
 package bot
 
 import (
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/meta-byte/rocketeer-discord-bot/api"
@@ -16,6 +14,12 @@ type Bot struct {
 	RegisteredCommands []*discordgo.ApplicationCommand
 	CommandHandlers    map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 }
+
+// type Command struct {
+// 	Name        string
+// 	Description string
+// 	Handler     func(session *discordgo.Session, i *discordgo.InteractionCreate)
+// }
 
 func NewBot(session *discordgo.Session, applicationID string) *Bot {
 	return &Bot{
@@ -31,7 +35,7 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 				Description: "Get info on an upcoming launch.",
 			},
 		},
-		CommandHandlers: map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
+		CommandHandlers: map[string]func(session *discordgo.Session, i *discordgo.InteractionCreate){
 			"hello": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -41,16 +45,8 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 				})
 			},
 			"launch": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-				responseObject, err := api.GetLaunches()
-				duration := responseObject.Results[0].WindowStart.Sub(time.Now())
-
-				days := int(duration.Hours() / 24)
-				hours := int(duration.Hours()) % 24
-				minutes := int(duration.Minutes()) % 60
-				seconds := int(duration.Seconds()) % 60
-
-				countdown := fmt.Sprintf("%d days, %d hours, %d minutes, %d seconds\n", days, hours, minutes, seconds)
-
+				launch, err := api.GetLaunch()
+				embed := api.BuildLaunchEmbed(launch, s, i)
 				if err != nil {
 					log.Fatal(err)
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -60,44 +56,7 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 						},
 					})
 				}
-				// footerString := fmt.Sprintf("Requested by %v", i.Member)
-				embed := discordgo.MessageEmbed{
-					Title:       responseObject.Results[0].Name,
-					Description: responseObject.Results[0].Mission.Description,
-					Fields: []*discordgo.MessageEmbedField{
-						{
-							Name:   "Status",
-							Value:  responseObject.Results[0].Status.Abbrev,
-							Inline: true,
-						},
-						{
-							Name:   "Approx Countdown",
-							Value:  countdown,
-							Inline: true,
-						},
-						{
-							Name:   "Launch Window Opens",
-							Value:  responseObject.Results[0].WindowStart.Format("01-02-2006 15:04:05") + "Z",
-							Inline: true,
-						},
-						{
-							Name:   "Current Time",
-							Value:  time.Now().UTC().Format("01-02-2006 15:04:05") + "Z",
-							Inline: true,
-						},
-					},
-					Image: &discordgo.MessageEmbedImage{
-						URL: responseObject.Results[0].Image,
-					},
-					//TODO: Add footer to embed
-					/*
-						Footer: &discordgo.MessageEmbedFooter{
-							Text: footerString,
-						},
-					*/
-					Color: 302553,
-				}
-				// session.ChannelMessageSendEmbed(i.ChannelID, &embed)
+
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
