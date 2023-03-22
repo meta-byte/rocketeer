@@ -1,7 +1,9 @@
 package bot
 
 import (
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/meta-byte/rocketeer-discord-bot/api"
@@ -15,12 +17,13 @@ type Bot struct {
 	CommandHandlers    map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 }
 
-// type Command struct {
-// 	Name        string
-// 	Description string
-// 	Handler     func(session *discordgo.Session, i *discordgo.InteractionCreate)
-// }
-
+//	type Command struct {
+//		Name        string
+//		Description string
+//		Handler     func(session *discordgo.Session, i *discordgo.InteractionCreate)
+//	}
+//
+// TODO: split commands and handler functions for readability and maintenance.
 func NewBot(session *discordgo.Session, applicationID string) *Bot {
 	return &Bot{
 		Session:       session,
@@ -33,6 +36,10 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 			{
 				Name:        "launch",
 				Description: "Get info on an upcoming launch.",
+			},
+			{
+				Name:        "dm",
+				Description: "I'll send you a dm with launch info.",
 			},
 		},
 		CommandHandlers: map[string]func(session *discordgo.Session, i *discordgo.InteractionCreate){
@@ -60,9 +67,43 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
+						Content: "Here's the next upcoming launch! 🚀",
 						Embeds: []*discordgo.MessageEmbed{
 							&embed,
 						},
+					},
+				})
+
+				message, err := s.InteractionResponse(i.Interaction)
+
+				err = s.MessageReactionAdd(message.ChannelID, message.ID, "🚀")
+
+			},
+			"dm": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+				user, err := s.User(i.Member.User.ID)
+
+				launch, err := api.GetLaunch()
+				embed := api.BuildLaunchEmbed(launch, s, i)
+				if err != nil {
+					log.Fatal(err)
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionResponseData{
+							Content: "I was unable to retrieve launch data.",
+						},
+					})
+				}
+				privateChannel, err := s.UserChannelCreate(user.ID)
+				if err != nil {
+					log.Fatalf("Error creating private channel: %v", err)
+				}
+
+				_, err = s.ChannelMessageSendEmbed(privateChannel.ID, &embed)
+
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "I've sent you a direct message",
 					},
 				})
 			},
@@ -70,6 +111,7 @@ func NewBot(session *discordgo.Session, applicationID string) *Bot {
 	}
 }
 
+// TODO: how to do we handle reactions
 func (b *Bot) RegisterCommands() error {
 	log.Println("adding commands...")
 
@@ -117,5 +159,28 @@ func (b *Bot) RegisterHandlers() {
 			return
 		}
 		handler(s, i)
+	})
+	b.Session.AddHandler(func(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+		channel := r.ChannelID
+		user := r.UserID
+		messageID := r.MessageID
+
+		message, err := s.ChannelMessage(channel, messageID)
+		if err != nil {
+			log.Fatalf("Unable to retrieve message: %v", err)
+		}
+
+		content := message.Content
+		if (s.State.User.ID != user) && (r.Emoji.Name == "🚀") && (strings.Contains(content, "🚀")) {
+			privateChannel, err := s.UserChannelCreate(user)
+			if err != nil {
+				log.Fatalf("Error creating private channel: %v", err)
+			}
+
+			_, err = s.ChannelMessageSend(privateChannel.ID, "I received your reaction to my message.")
+		} else {
+			fmt.Println("reaction was created by rocketeer...ignoring")
+		}
+
 	})
 }
