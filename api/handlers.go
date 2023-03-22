@@ -12,7 +12,7 @@ import (
 	"github.com/meta-byte/rocketeer-discord-bot/types"
 )
 
-func makeHTTPRequest(endpoint string, target interface{}) error {
+func makeGETRequest(endpoint string, target interface{}) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -35,7 +35,7 @@ func makeHTTPRequest(endpoint string, target interface{}) error {
 // TODO: Move business logic for getting the singular next launch to here. Setup separate function for multiple launches etc.
 func GetLaunch() (launch *types.Launch, err error) {
 	endpoint := os.Getenv("ENDPOINT")
-	err = makeHTTPRequest(endpoint, &launch)
+	err = makeGETRequest(endpoint, &launch)
 	if err != nil {
 		return nil, err
 	}

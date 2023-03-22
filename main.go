@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	"github.com/meta-byte/rocketeer-discord-bot/bot"
+	"github.com/meta-byte/rocketeer-discord-bot/database"
 )
 
 func init() {
@@ -19,8 +20,12 @@ func init() {
 func main() {
 	// Initialize Discord session
 	godotenv.Load(".env")
+
 	token := os.Getenv("BOT_TOKEN")
 	appID := os.Getenv("APP_ID")
+	redisAddress := os.Getenv("REDIS_ADDRESS")
+
+	database.InitRedis(redisAddress)
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		log.Fatalf("invalid bot parameters: %v", err)
