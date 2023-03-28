@@ -126,25 +126,25 @@ func BuildLaunchEmbed(l *types.Launch, s *discordgo.Session, i *discordgo.Intera
 				Value:  l.Results[0].LaunchServiceProvider.Type,
 				Inline: true,
 			},
-			// {
-			// 	Name:   "---Mission---",
-			// 	Inline: false,
-			// },
-			// {
-			// 	Name:   "Program",
-			// 	Value:  l.Results[0].LaunchServiceProvider.Type,
-			// 	Inline: true,
-			// },
-			// {
-			// 	Name:   "Mission Type",
-			// 	Value:  l.Results[0].LaunchServiceProvider.Type,
-			// 	Inline: true,
-			// },
-			// {
-			// 	Name:   "Orbit",
-			// 	Value:  l.Results[0].LaunchServiceProvider.Type,
-			// 	Inline: true,
-			// },
+			{
+				Name:   "---Mission---",
+				Inline: false,
+			},
+			{
+				Name:   "Program",
+				Value:  l.Results[0].LaunchServiceProvider.Type,
+				Inline: true,
+			},
+			{
+				Name:   "Mission Type",
+				Value:  l.Results[0].Mission.Type,
+				Inline: true,
+			},
+			{
+				Name:   "Orbit",
+				Value:  l.Results[0].Mission.Orbit.Name,
+				Inline: true,
+			},
 		},
 		Image: &discordgo.MessageEmbedImage{
 			URL: l.Results[0].Image,
