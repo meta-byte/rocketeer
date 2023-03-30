@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -25,15 +26,21 @@ func main() {
 	appID := os.Getenv("APP_ID")
 	redisAddress := os.Getenv("REDIS_ADDRESS")
 
-	database.InitRedis(redisAddress)
+	redis := database.NewRedis(redisAddress)
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		log.Fatalf("invalid bot parameters: %v", err)
 	}
+
+	// flush db for testing purposes
+	redis.FlushDB()
+	redis.Cache()
+	go redis.CacheInBackground(10 * time.Minute)
+
 	session.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
 
 	// Create bot instance
-	bot := bot.NewBot(session, appID)
+	bot := bot.NewBot(session, appID, redis)
 
 	// Register commands
 	err = bot.RegisterCommands()
